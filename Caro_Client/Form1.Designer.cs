@@ -39,35 +39,40 @@
             label2 = new Label();
             mrCountDown = new System.Windows.Forms.Timer(components);
             prgTimer = new ProgressBar();
+            btnSuggestMove = new Button();
             SuspendLayout();
             // 
             // pnlChessBoard
             // 
-            pnlChessBoard.Location = new Point(12, 100);
+            pnlChessBoard.Location = new Point(16, 128);
+            pnlChessBoard.Margin = new Padding(4);
             pnlChessBoard.Name = "pnlChessBoard";
-            pnlChessBoard.Size = new Size(600, 600);
+            pnlChessBoard.Size = new Size(780, 768);
             pnlChessBoard.TabIndex = 0;
             // 
             // txtIP
             // 
-            txtIP.Location = new Point(78, 42);
+            txtIP.Location = new Point(101, 54);
+            txtIP.Margin = new Padding(4);
             txtIP.Name = "txtIP";
-            txtIP.Size = new Size(157, 31);
+            txtIP.Size = new Size(203, 39);
             txtIP.TabIndex = 1;
             txtIP.Text = "127.0.0.1";
             // 
             // txtPlayerName
             // 
-            txtPlayerName.Location = new Point(321, 42);
+            txtPlayerName.Location = new Point(417, 54);
+            txtPlayerName.Margin = new Padding(4);
             txtPlayerName.Name = "txtPlayerName";
-            txtPlayerName.Size = new Size(150, 31);
+            txtPlayerName.Size = new Size(194, 39);
             txtPlayerName.TabIndex = 2;
             // 
             // btnConnect
             // 
-            btnConnect.Location = new Point(557, 39);
+            btnConnect.Location = new Point(724, 50);
+            btnConnect.Margin = new Padding(4);
             btnConnect.Name = "btnConnect";
-            btnConnect.Size = new Size(112, 34);
+            btnConnect.Size = new Size(146, 44);
             btnConnect.TabIndex = 3;
             btnConnect.Text = "Connect";
             btnConnect.UseVisualStyleBackColor = true;
@@ -76,36 +81,39 @@
             // lsvPlayers
             // 
             lsvPlayers.FormattingEnabled = true;
-            lsvPlayers.ItemHeight = 25;
-            lsvPlayers.Location = new Point(618, 321);
+            lsvPlayers.Location = new Point(803, 411);
+            lsvPlayers.Margin = new Padding(4);
             lsvPlayers.Name = "lsvPlayers";
-            lsvPlayers.Size = new Size(150, 304);
+            lsvPlayers.Size = new Size(195, 388);
             lsvPlayers.TabIndex = 4;
             // 
             // lblTimer
             // 
             lblTimer.AutoSize = true;
-            lblTimer.Location = new Point(650, 100);
+            lblTimer.Location = new Point(845, 128);
+            lblTimer.Margin = new Padding(4, 0, 4, 0);
             lblTimer.Name = "lblTimer";
-            lblTimer.Size = new Size(82, 25);
+            lblTimer.Size = new Size(109, 32);
             lblTimer.TabIndex = 5;
             lblTimer.Text = "thời gian";
             // 
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(36, 44);
+            label1.Location = new Point(47, 56);
+            label1.Margin = new Padding(4, 0, 4, 0);
             label1.Name = "label1";
-            label1.Size = new Size(27, 25);
+            label1.Size = new Size(33, 32);
             label1.TabIndex = 6;
             label1.Text = "IP";
             // 
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(258, 45);
+            label2.Location = new Point(335, 58);
+            label2.Margin = new Padding(4, 0, 4, 0);
             label2.Name = "label2";
-            label2.Size = new Size(38, 25);
+            label2.Size = new Size(52, 32);
             label2.TabIndex = 7;
             label2.Text = "Tên";
             // 
@@ -115,16 +123,28 @@
             // 
             // prgTimer
             // 
-            prgTimer.Location = new Point(618, 199);
+            prgTimer.Location = new Point(803, 255);
+            prgTimer.Margin = new Padding(4);
             prgTimer.Name = "prgTimer";
-            prgTimer.Size = new Size(150, 34);
+            prgTimer.Size = new Size(195, 44);
             prgTimer.TabIndex = 8;
+            // 
+            // btnSuggestMove
+            // 
+            btnSuggestMove.Location = new Point(803, 334);
+            btnSuggestMove.Name = "btnSuggestMove";
+            btnSuggestMove.Size = new Size(195, 46);
+            btnSuggestMove.TabIndex = 9;
+            btnSuggestMove.Text = "Gợi ý nước đi";
+            btnSuggestMove.UseVisualStyleBackColor = true;
+            btnSuggestMove.Click += btnSuggestMove_Click;
             // 
             // Form1
             // 
-            AutoScaleDimensions = new SizeF(10F, 25F);
+            AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 720);
+            ClientSize = new Size(1040, 922);
+            Controls.Add(btnSuggestMove);
             Controls.Add(prgTimer);
             Controls.Add(label2);
             Controls.Add(label1);
@@ -134,6 +154,7 @@
             Controls.Add(txtPlayerName);
             Controls.Add(txtIP);
             Controls.Add(pnlChessBoard);
+            Margin = new Padding(4);
             Name = "Form1";
             Text = "Caro Network Game";
             ResumeLayout(false);
@@ -153,5 +174,6 @@
         private Label label2;
         private System.Windows.Forms.Timer mrCountDown;
         private ProgressBar prgTimer;
+        private Button btnSuggestMove;
     }
 }

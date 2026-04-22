@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using Caro_Shared;
+using Caro_AI;
 
 namespace Caro_Client
 {
@@ -18,6 +19,7 @@ namespace Caro_Client
 
         bool isMyTurn = true;
         bool isGameOver = false;
+        const int BOARD_SIZE = 20;
 
         int timeLeft = 30;
         const int MAX_TIME = 30;
@@ -55,8 +57,8 @@ namespace Caro_Client
         void DrawChessBoard()
         {
             pnlChessBoard.Controls.Clear();
-            int rows = 20;
-            int cols = 20;
+            int rows = BOARD_SIZE;
+            int cols = BOARD_SIZE;
             int size = 30;
             matrix = new Button[rows, cols];
 
@@ -80,7 +82,8 @@ namespace Caro_Client
 
         void ResetBoard()
         {
-            this.Invoke((MethodInvoker)(() => {
+            this.Invoke((MethodInvoker)(() =>
+            {
                 foreach (Button btn in matrix)
                 {
                     btn.Text = "";
@@ -125,6 +128,7 @@ namespace Caro_Client
         private void Btn_Click(object sender, EventArgs e)
         {
             if (isGameOver || stream == null || !isMyTurn) return;
+            ResetSuggestionHighlight();
 
             Button btn = sender as Button;
             if (btn.Text != "") return;
@@ -169,7 +173,8 @@ namespace Caro_Client
                         if (p.Action == "MOVE") MarkEnemy(p.X, p.Y);
                         if (p.Action == "RESTART_REQUEST")
                         {
-                            this.Invoke((MethodInvoker)(() => {
+                            this.Invoke((MethodInvoker)(() =>
+                            {
                                 if (MessageBox.Show($"Đối thủ [{p.Sender}] muốn chơi lại?", "Mời", MessageBoxButtons.YesNo) == DialogResult.Yes)
                                 {
                                     SendPacket(new Packet { Action = "RESTART_ACCEPT" });
@@ -179,7 +184,8 @@ namespace Caro_Client
                         }
                         if (p.Action == "RESTART_ACCEPT")
                         {
-                            this.Invoke((MethodInvoker)(() => {
+                            this.Invoke((MethodInvoker)(() =>
+                            {
                                 MessageBox.Show("Ván mới bắt đầu!");
                                 ResetBoard(); isMyTurn = true; mrCountDown.Start();
                             }));
@@ -192,8 +198,10 @@ namespace Caro_Client
 
         void MarkEnemy(int x, int y)
         {
-            this.Invoke((MethodInvoker)(() => {
+            this.Invoke((MethodInvoker)(() =>
+            {
                 if (isGameOver) return;
+                ResetSuggestionHighlight();
                 Button btn = matrix[x, y];
                 btn.Text = "O";
                 btn.ForeColor = Color.Blue;
@@ -229,7 +237,8 @@ namespace Caro_Client
 
         void UpdateList(string list)
         {
-            this.Invoke((MethodInvoker)(() => {
+            this.Invoke((MethodInvoker)(() =>
+            {
                 lsvPlayers.Items.Clear();
                 foreach (var user in list.Split(','))
                     if (user != myName && !string.IsNullOrEmpty(user)) lsvPlayers.Items.Add(user);
@@ -246,5 +255,50 @@ namespace Caro_Client
         #endregion
 
         private void lsvPlayers_SelectedIndexChanged(object sender, EventArgs e) { }
+
+        private void btnSuggestMove_Click(object sender, EventArgs e)
+        {
+            if (isGameOver || !isMyTurn)
+            {
+                MessageBox.Show("Hiện tại chưa thể gợi ý nước đi.");
+                return;
+            }
+
+            Point suggestion = FindBestMove();
+            if (suggestion.X < 0 || suggestion.Y < 0)
+            {
+                MessageBox.Show("Không tìm thấy nước đi phù hợp.");
+                return;
+            }
+
+            Button suggestedButton = matrix[suggestion.X, suggestion.Y];
+            suggestedButton.BackColor = Color.LightGreen;
+            
+        }
+        #region Move Suggestion AI
+        Point FindBestMove()
+        {
+            ResetSuggestionHighlight();
+            string[,] boardState = new string[BOARD_SIZE, BOARD_SIZE];
+            for (int i = 0; i < BOARD_SIZE; i++)
+                for (int j = 0; j < BOARD_SIZE; j++)
+                    boardState[i, j] = matrix[i, j].Text;
+
+            MoveSuggestion? suggestion = MoveSuggestionEngine.SuggestMove(boardState, "X", "O");
+            if (suggestion == null)
+                return new Point(-1, -1);
+
+            return new Point(suggestion.Row, suggestion.Col);
+        }
+
+        void ResetSuggestionHighlight()
+        {
+            foreach (Button btn in matrix)
+            {
+                if (btn.BackColor == Color.LightGreen) btn.BackColor = default(Color);
+            }
+        }
+        #endregion
+
     }
 }
