@@ -54,10 +54,12 @@ namespace Caro_Server
                             Console.WriteLine($"{clientName} da tham gia.");
                             BroadcastPlayerList();
                         }
-                        else if (p.Action == "MOVE")
+                        // --- ĐOẠN SỬA ĐỔI Ở ĐÂY ---
+                        // Cho phép Server chuyển tiếp tất cả các lệnh về nước đi và yêu cầu chơi lại
+                        else if (p.Action == "MOVE" || p.Action == "RESTART_REQUEST" || p.Action == "RESTART_ACCEPT")
                         {
-                            Console.WriteLine($"{p.Sender} danh tai: {p.X},{p.Y}");
-                            // Gửi nước đi cho tất cả mọi người TRỪ người vừa đánh
+                            Console.WriteLine($"Lenh [{p.Action}] tu {p.Sender}");
+                            // Chuyển tiếp gói tin cho đối thủ
                             BroadcastPacket(p, clientName);
                         }
                     }

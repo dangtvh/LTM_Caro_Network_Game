@@ -14,12 +14,42 @@ namespace Caro_Client
         TcpClient client;
         NetworkStream stream;
         string myName;
-        Button[,] matrix; // Ma trận để quản lý các ô cờ dễ dàng hơn
+        Button[,] matrix;
+
+        bool isMyTurn = true;
+        bool isGameOver = false;
+
+        int timeLeft = 30;
+        const int MAX_TIME = 30;
 
         public Form1()
         {
             InitializeComponent();
             DrawChessBoard();
+
+            // Sử dụng mrCountDown khớp với tên trong Designer của bạn
+            mrCountDown.Interval = 1000;
+            mrCountDown.Tick += MrCountDown_Tick;
+        }
+
+        private void MrCountDown_Tick(object sender, EventArgs e)
+        {
+            timeLeft--;
+            lblTimer.Text = timeLeft + "s";
+            prgTimer.Value = (int)((double)timeLeft / MAX_TIME * 100);
+
+            if (timeLeft <= 0)
+            {
+                mrCountDown.Stop();
+                isGameOver = true;
+                ToggleBoard(false);
+                MessageBox.Show("Hết giờ! Bạn đã thua.");
+
+                if (MessageBox.Show("Bạn muốn phục thù không?", "Kết thúc", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                {
+                    SendPacket(new Packet { Action = "RESTART_REQUEST", Sender = myName });
+                }
+            }
         }
 
         void DrawChessBoard()
@@ -48,52 +78,80 @@ namespace Caro_Client
             }
         }
 
+        void ResetBoard()
+        {
+            this.Invoke((MethodInvoker)(() => {
+                foreach (Button btn in matrix)
+                {
+                    btn.Text = "";
+                    btn.BackColor = default(Color);
+                }
+                isGameOver = false;
+                timeLeft = MAX_TIME;
+                prgTimer.Value = 100;
+                lblTimer.Text = timeLeft + "s";
+                ToggleBoard(true);
+            }));
+        }
+
+        void ToggleBoard(bool state)
+        {
+            if (pnlChessBoard.InvokeRequired)
+                pnlChessBoard.Invoke((MethodInvoker)(() => pnlChessBoard.Enabled = state));
+            else
+                pnlChessBoard.Enabled = state;
+        }
+
         private async void btnConnect_Click(object sender, EventArgs e)
         {
             myName = txtPlayerName.Text.Trim();
-            if (string.IsNullOrEmpty(myName)) return;
+            string serverIP = txtIP.Text.Trim();
+
+            if (string.IsNullOrEmpty(myName) || string.IsNullOrEmpty(serverIP)) return;
 
             try
             {
                 client = new TcpClient();
-                await client.ConnectAsync("127.0.0.1", 9999);
+                await client.ConnectAsync(serverIP, 9999);
                 stream = client.GetStream();
-
                 SendPacket(new Packet { Action = "LOGIN", Sender = myName });
 
                 btnConnect.Enabled = false;
-                txtPlayerName.ReadOnly = true;
                 _ = Task.Run(() => ReceiveData());
             }
-            catch { MessageBox.Show("Lỗi kết nối Server!"); }
+            catch { MessageBox.Show("Lỗi kết nối!"); }
         }
 
         private void Btn_Click(object sender, EventArgs e)
         {
-            Button btn = sender as Button;
-            if (btn.Text != "" || stream == null) return;
+            if (isGameOver || stream == null || !isMyTurn) return;
 
-            // Đánh quân mình (X)
+            Button btn = sender as Button;
+            if (btn.Text != "") return;
+
             btn.Text = "X";
             btn.ForeColor = Color.Red;
+            mrCountDown.Stop(); // Dừng mrCountDown
 
             string[] pos = btn.Tag.ToString().Split(',');
-            int x = int.Parse(pos[0]);
-            int y = int.Parse(pos[1]);
+            SendPacket(new Packet { Action = "MOVE", Sender = myName, X = int.Parse(pos[0]), Y = int.Parse(pos[1]) });
 
-            // Gửi tọa độ lên Server
-            SendPacket(new Packet { Action = "MOVE", Sender = myName, X = x, Y = y });
-
-            // Kiểm tra xem mình đánh nước này xong có thắng không
             if (isEndGame(btn))
             {
-                MessageBox.Show("Bạn đã thắng!");
+                isGameOver = true;
+                ToggleBoard(false);
+                MessageBox.Show("Chúc mừng! Bạn thắng!");
+            }
+            else
+            {
+                isMyTurn = false;
+                ToggleBoard(false);
             }
         }
 
         async Task ReceiveData()
         {
-            byte[] buffer = new byte[1024 * 10];
+            byte[] buffer = new byte[10240];
             while (true)
             {
                 try
@@ -109,10 +167,53 @@ namespace Caro_Client
                         Packet p = JsonConvert.DeserializeObject<Packet>(pStr);
                         if (p.Action == "UPDATE_LIST") UpdateList(p.Message);
                         if (p.Action == "MOVE") MarkEnemy(p.X, p.Y);
+                        if (p.Action == "RESTART_REQUEST")
+                        {
+                            this.Invoke((MethodInvoker)(() => {
+                                if (MessageBox.Show($"Đối thủ [{p.Sender}] muốn chơi lại?", "Mời", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                                {
+                                    SendPacket(new Packet { Action = "RESTART_ACCEPT" });
+                                    ResetBoard(); isMyTurn = false;
+                                }
+                            }));
+                        }
+                        if (p.Action == "RESTART_ACCEPT")
+                        {
+                            this.Invoke((MethodInvoker)(() => {
+                                MessageBox.Show("Ván mới bắt đầu!");
+                                ResetBoard(); isMyTurn = true; mrCountDown.Start();
+                            }));
+                        }
                     }
                 }
                 catch { break; }
             }
+        }
+
+        void MarkEnemy(int x, int y)
+        {
+            this.Invoke((MethodInvoker)(() => {
+                if (isGameOver) return;
+                Button btn = matrix[x, y];
+                btn.Text = "O";
+                btn.ForeColor = Color.Blue;
+
+                if (isEndGame(btn))
+                {
+                    isGameOver = true;
+                    mrCountDown.Stop();
+                    ToggleBoard(false);
+                    if (MessageBox.Show("Thua rồi! Phục thù không?", "Kết thúc", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                        SendPacket(new Packet { Action = "RESTART_REQUEST", Sender = myName });
+                }
+                else
+                {
+                    isMyTurn = true;
+                    ToggleBoard(true);
+                    timeLeft = MAX_TIME;
+                    mrCountDown.Start();
+                }
+            }));
         }
 
         void SendPacket(Packet p)
@@ -135,99 +236,15 @@ namespace Caro_Client
             }));
         }
 
-        void MarkEnemy(int x, int y)
-        {
-            this.Invoke((MethodInvoker)(() => {
-                Button btn = matrix[x, y];
-                btn.Text = "O";
-                btn.ForeColor = Color.Blue;
-
-                if (isEndGame(btn))
-                {
-                    MessageBox.Show("Đối thủ đã thắng rồi!");
-                }
-            }));
-        }
-
-        #region Logic Kiểm tra thắng thua
-        bool isEndGame(Button btn)
-        {
-            return isWinHorizontal(btn) || isWinVertical(btn) || isWinPrimary(btn) || isWinSub(btn);
-        }
-
-        Point GetPoint(Button btn)
-        {
-            string[] pos = btn.Tag.ToString().Split(',');
-            return new Point(int.Parse(pos[1]), int.Parse(pos[0]));
-        }
-
-        bool isWinHorizontal(Button btn) // Kiểm tra hàng ngang
-        {
-            Point point = GetPoint(btn);
-            int count = 0;
-            for (int i = point.X; i >= 0; i--)
-            {
-                if (matrix[point.Y, i].Text == btn.Text) count++;
-                else break;
-            }
-            for (int i = point.X + 1; i < 20; i++)
-            {
-                if (matrix[point.Y, i].Text == btn.Text) count++;
-                else break;
-            }
-            return count >= 5;
-        }
-
-        bool isWinVertical(Button btn) // Kiểm tra hàng dọc
-        {
-            Point point = GetPoint(btn);
-            int count = 0;
-            for (int i = point.Y; i >= 0; i--)
-            {
-                if (matrix[i, point.X].Text == btn.Text) count++;
-                else break;
-            }
-            for (int i = point.Y + 1; i < 20; i++)
-            {
-                if (matrix[i, point.X].Text == btn.Text) count++;
-                else break;
-            }
-            return count >= 5;
-        }
-
-        bool isWinPrimary(Button btn) // Đường chéo chính
-        {
-            Point point = GetPoint(btn);
-            int count = 0;
-            for (int i = 0; i <= point.X && i <= point.Y; i++)
-            {
-                if (matrix[point.Y - i, point.X - i].Text == btn.Text) count++;
-                else break;
-            }
-            for (int i = 1; i < 20 - point.X && i < 20 - point.Y; i++)
-            {
-                if (matrix[point.Y + i, point.X + i].Text == btn.Text) count++;
-                else break;
-            }
-            return count >= 5;
-        }
-
-        bool isWinSub(Button btn) // Đường chéo phụ
-        {
-            Point point = GetPoint(btn);
-            int count = 0;
-            for (int i = 0; i <= point.X && point.Y + i < 20; i++)
-            {
-                if (matrix[point.Y + i, point.X - i].Text == btn.Text) count++;
-                else break;
-            }
-            for (int i = 1; i <= point.Y && point.X + i < 20; i++)
-            {
-                if (matrix[point.Y - i, point.X + i].Text == btn.Text) count++;
-                else break;
-            }
-            return count >= 5;
-        }
+        #region Logic Win
+        bool isEndGame(Button btn) { return isWinHorizontal(btn) || isWinVertical(btn) || isWinPrimary(btn) || isWinSub(btn); }
+        Point GetPoint(Button btn) { string[] pos = btn.Tag.ToString().Split(','); return new Point(int.Parse(pos[1]), int.Parse(pos[0])); }
+        bool isWinHorizontal(Button btn) { Point p = GetPoint(btn); int c = 0; for (int i = p.X; i >= 0 && matrix[p.Y, i].Text == btn.Text; i--) c++; for (int i = p.X + 1; i < 20 && matrix[p.Y, i].Text == btn.Text; i++) c++; return c >= 5; }
+        bool isWinVertical(Button btn) { Point p = GetPoint(btn); int c = 0; for (int i = p.Y; i >= 0 && matrix[i, p.X].Text == btn.Text; i--) c++; for (int i = p.Y + 1; i < 20 && matrix[i, p.X].Text == btn.Text; i++) c++; return c >= 5; }
+        bool isWinPrimary(Button btn) { Point p = GetPoint(btn); int c = 0; for (int i = 0; p.Y - i >= 0 && p.X - i >= 0 && matrix[p.Y - i, p.X - i].Text == btn.Text; i++) c++; for (int i = 1; p.Y + i < 20 && p.X + i < 20 && matrix[p.Y + i, p.X + i].Text == btn.Text; i++) c++; return c >= 5; }
+        bool isWinSub(Button btn) { Point p = GetPoint(btn); int c = 0; for (int i = 0; p.Y + i < 20 && p.X - i >= 0 && matrix[p.Y + i, p.X - i].Text == btn.Text; i++) c++; for (int i = 1; p.Y - i >= 0 && p.X + i < 20 && matrix[p.Y - i, p.X + i].Text == btn.Text; i++) c++; return c >= 5; }
         #endregion
+
+        private void lsvPlayers_SelectedIndexChanged(object sender, EventArgs e) { }
     }
 }
