@@ -40,6 +40,8 @@
             mrCountDown = new System.Windows.Forms.Timer(components);
             prgTimer = new ProgressBar();
             btnSuggestMove = new Button();
+            btnInvite = new Button();
+            lblRoom = new Label();
             SuspendLayout();
             // 
             // pnlChessBoard
@@ -52,7 +54,7 @@
             // 
             // txtIP
             // 
-            txtIP.Location = new Point(101, 54);
+            txtIP.Location = new Point(69, 56);
             txtIP.Margin = new Padding(4);
             txtIP.Name = "txtIP";
             txtIP.Size = new Size(203, 39);
@@ -61,18 +63,18 @@
             // 
             // txtPlayerName
             // 
-            txtPlayerName.Location = new Point(417, 54);
+            txtPlayerName.Location = new Point(353, 58);
             txtPlayerName.Margin = new Padding(4);
             txtPlayerName.Name = "txtPlayerName";
-            txtPlayerName.Size = new Size(194, 39);
+            txtPlayerName.Size = new Size(128, 39);
             txtPlayerName.TabIndex = 2;
             // 
             // btnConnect
             // 
-            btnConnect.Location = new Point(724, 50);
+            btnConnect.Location = new Point(516, 58);
             btnConnect.Margin = new Padding(4);
             btnConnect.Name = "btnConnect";
-            btnConnect.Size = new Size(146, 44);
+            btnConnect.Size = new Size(130, 37);
             btnConnect.TabIndex = 3;
             btnConnect.Text = "Connect";
             btnConnect.UseVisualStyleBackColor = true;
@@ -90,7 +92,7 @@
             // lblTimer
             // 
             lblTimer.AutoSize = true;
-            lblTimer.Location = new Point(845, 128);
+            lblTimer.Location = new Point(845, 160);
             lblTimer.Margin = new Padding(4, 0, 4, 0);
             lblTimer.Name = "lblTimer";
             lblTimer.Size = new Size(109, 32);
@@ -100,7 +102,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(47, 56);
+            label1.Location = new Point(15, 58);
             label1.Margin = new Padding(4, 0, 4, 0);
             label1.Name = "label1";
             label1.Size = new Size(33, 32);
@@ -110,7 +112,7 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(335, 58);
+            label2.Location = new Point(293, 58);
             label2.Margin = new Padding(4, 0, 4, 0);
             label2.Name = "label2";
             label2.Size = new Size(52, 32);
@@ -139,11 +141,32 @@
             btnSuggestMove.UseVisualStyleBackColor = true;
             btnSuggestMove.Click += btnSuggestMove_Click;
             // 
+            // btnInvite
+            // 
+            btnInvite.Location = new Point(674, 58);
+            btnInvite.Name = "btnInvite";
+            btnInvite.Size = new Size(122, 37);
+            btnInvite.TabIndex = 10;
+            btnInvite.Text = "Mời Vào ";
+            btnInvite.UseVisualStyleBackColor = true;
+            btnInvite.Click += btnInvite_Click;
+            // 
+            // lblRoom
+            // 
+            lblRoom.AutoSize = true;
+            lblRoom.Location = new Point(777, 9);
+            lblRoom.Name = "lblRoom";
+            lblRoom.Size = new Size(251, 32);
+            lblRoom.TabIndex = 11;
+            lblRoom.Text = "Phòng: Chưa tham gia";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1040, 922);
+            Controls.Add(lblRoom);
+            Controls.Add(btnInvite);
             Controls.Add(btnSuggestMove);
             Controls.Add(prgTimer);
             Controls.Add(label2);
@@ -175,5 +198,7 @@
         private System.Windows.Forms.Timer mrCountDown;
         private ProgressBar prgTimer;
         private Button btnSuggestMove;
+        private Button btnInvite;
+        private Label lblRoom;
     }
 }

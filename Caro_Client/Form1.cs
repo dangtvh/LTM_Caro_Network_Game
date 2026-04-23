@@ -15,6 +15,10 @@ namespace Caro_Client
         TcpClient client;
         NetworkStream stream;
         string myName;
+
+        string currentRoomId;
+        string currentOpponent;
+
         Button[,] matrix;
 
         bool isMyTurn = true;
@@ -28,6 +32,8 @@ namespace Caro_Client
         {
             InitializeComponent();
             DrawChessBoard();
+
+            ToggleBoard(false);
 
             // Sử dụng mrCountDown khớp với tên trong Designer của bạn
             mrCountDown.Interval = 1000;
@@ -93,7 +99,7 @@ namespace Caro_Client
                 timeLeft = MAX_TIME;
                 prgTimer.Value = 100;
                 lblTimer.Text = timeLeft + "s";
-                ToggleBoard(true);
+                ToggleBoard(!string.IsNullOrEmpty(currentRoomId) && isMyTurn);
             }));
         }
 
@@ -127,7 +133,7 @@ namespace Caro_Client
 
         private void Btn_Click(object sender, EventArgs e)
         {
-            if (isGameOver || stream == null || !isMyTurn) return;
+            if (isGameOver || stream == null || !isMyTurn || string.IsNullOrEmpty(currentRoomId)) return;
             ResetSuggestionHighlight();
 
             Button btn = sender as Button;
@@ -138,7 +144,7 @@ namespace Caro_Client
             mrCountDown.Stop(); // Dừng mrCountDown
 
             string[] pos = btn.Tag.ToString().Split(',');
-            SendPacket(new Packet { Action = "MOVE", Sender = myName, X = int.Parse(pos[0]), Y = int.Parse(pos[1]) });
+            SendPacket(new Packet { Action = "MOVE", Sender = myName, RoomId = currentRoomId, X = int.Parse(pos[0]), Y = int.Parse(pos[1]) });
 
             if (isEndGame(btn))
             {
@@ -171,6 +177,10 @@ namespace Caro_Client
                         Packet p = JsonConvert.DeserializeObject<Packet>(pStr);
                         if (p.Action == "UPDATE_LIST") UpdateList(p.Message);
                         if (p.Action == "MOVE") MarkEnemy(p.X, p.Y);
+                        if (p.Action == "INVITE") HandleInvite(p);
+                        if (p.Action == "ROOM_JOINED") HandleRoomJoined(p);
+                        if (p.Action == "INVITE_DECLINED") this.Invoke((MethodInvoker)(() => MessageBox.Show($"{p.Sender} đã từ chối lời mời.")));
+                        if (p.Action == "ROOM_CLOSED") HandleRoomClosed(p.Message);
                         if (p.Action == "RESTART_REQUEST")
                         {
                             this.Invoke((MethodInvoker)(() =>
@@ -194,6 +204,63 @@ namespace Caro_Client
                 }
                 catch { break; }
             }
+        }
+        void HandleInvite(Packet p)
+        {
+            this.Invoke((MethodInvoker)(() =>
+            {
+                if (MessageBox.Show($"[{p.Sender}] mời bạn vào phòng. Đồng ý?", "Mời chơi", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                {
+                    SendPacket(new Packet
+                    {
+                        Action = "INVITE_RESPONSE",
+                        Sender = myName,
+                        Receiver = p.Sender,
+                        RoomId = p.RoomId,
+                        Message = "ACCEPT"
+                    });
+                }
+                else
+                {
+                    SendPacket(new Packet
+                    {
+                        Action = "INVITE_RESPONSE",
+                        Sender = myName,
+                        Receiver = p.Sender,
+                        RoomId = p.RoomId,
+                        Message = "DECLINE"
+                    });
+                }
+            }));
+        }
+
+        void HandleRoomJoined(Packet p)
+        {
+            this.Invoke((MethodInvoker)(() =>
+            {
+                currentRoomId = p.RoomId;
+                isGameOver = false;
+                ResetBoard();
+                isMyTurn = p.Message == "HOST";
+                lblRoom.Text = $"Phòng: {currentRoomId[..8]}";
+                ToggleBoard(isMyTurn);
+                if (isMyTurn) mrCountDown.Start(); else mrCountDown.Stop();
+                MessageBox.Show("Đã vào phòng, bắt đầu ván mới!");
+            }));
+        }
+
+        void HandleRoomClosed(string message)
+        {
+            this.Invoke((MethodInvoker)(() =>
+            {
+                currentRoomId = null;
+                currentOpponent = null;
+                mrCountDown.Stop();
+                ToggleBoard(false);
+                lblRoom.Text = "Phòng: Chưa tham gia";
+                MessageBox.Show(message);
+                ResetBoard();
+            }));
         }
 
         void MarkEnemy(int x, int y)
@@ -273,7 +340,7 @@ namespace Caro_Client
 
             Button suggestedButton = matrix[suggestion.X, suggestion.Y];
             suggestedButton.BackColor = Color.LightGreen;
-            
+
         }
         #region Move Suggestion AI
         Point FindBestMove()
@@ -300,5 +367,32 @@ namespace Caro_Client
         }
         #endregion
 
+        private void btnInvite_Click(object sender, EventArgs e)
+        {
+            if (stream == null)
+            {
+                MessageBox.Show("Hãy kết nối server trước.");
+                return;
+            }
+            if (lsvPlayers.SelectedItem == null)
+            {
+                MessageBox.Show("Chọn một người chơi để mời.");
+                return;
+            }
+            if (!string.IsNullOrEmpty(currentRoomId))
+            {
+                MessageBox.Show("Bạn đang trong phòng, không thể tạo phòng mới.");
+                return;
+            }
+
+            currentOpponent = lsvPlayers.SelectedItem.ToString();
+            SendPacket(new Packet
+            {
+                Action = "CREATE_ROOM",
+                Sender = myName,
+                Receiver = currentOpponent
+            });
+            MessageBox.Show($"Đã gửi lời mời tới [{currentOpponent}].");
+        }
     }
 }
